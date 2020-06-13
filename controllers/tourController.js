@@ -1,4 +1,4 @@
-const Tour = require('./../models/tourModel');
+const Tour = require('../models/tourModel');
 const APIFeatures = require('../utils/apiFeatures');
 
 exports.getAllTours = async (req, res) => {
@@ -16,13 +16,13 @@ exports.getAllTours = async (req, res) => {
       status: 'success',
       results: tours.length,
       data: {
-        tours
-      }
+        tours,
+      },
     });
   } catch (err) {
     res.status(400).json({
       status: 'fail',
-      message: err.message
+      message: err.message,
     });
   }
 };
@@ -35,13 +35,13 @@ exports.getTourById = async (req, res) => {
       status: 'success',
       results: tour.length,
       data: {
-        tour
-      }
+        tour,
+      },
     });
   } catch (err) {
     res.status(400).json({
       status: 'fail',
-      message: err.message
+      message: err.message,
     });
   }
 };
@@ -53,32 +53,37 @@ exports.createTour = async (req, res) => {
     res.status(201).json({
       status: 'success',
       data: {
-        tour: newTour
-      }
+        tour: newTour,
+      },
     });
   } catch (err) {
     res.status(400).json({
       status: 'fail',
-      message: err.message
+      message: err.message,
     });
   }
 };
 
 exports.updateTour = async (req, res) => {
   try {
-    const tour = await Tour.findByIdAndUpdate({ _id: req.params.id }, { ...req.body }, {
-      new: true
-    });
+    const tour = await Tour.findByIdAndUpdate(
+      { _id: req.params.id },
+      { ...req.body },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
     res.status(201).json({
       status: 'success',
       data: {
-        tour: tour
-      }
+        tour: tour,
+      },
     });
   } catch (err) {
     res.status(404).json({
       status: 'fail',
-      message: err.message
+      message: err,
     });
   }
 };
@@ -89,13 +94,13 @@ exports.deleteTour = async (req, res) => {
     res.status(204).json({
       status: 'success',
       data: {
-        tour: tour
-      }
+        tour: tour,
+      },
     });
   } catch (err) {
     res.status(404).json({
       status: 'fail',
-      message: err.message
+      message: err.message,
     });
   }
 };
@@ -108,10 +113,10 @@ exports.top5Cheap = (req, res, next) => {
 };
 
 exports.getTourStats = async (req, res) => {
-  try{
+  try {
     const stats = await Tour.aggregate([
       {
-        $match: {ratingsAverage: { $gte: 4.5 }}
+        $match: { ratingsAverage: { $gte: 4.5 } },
       },
       {
         $group: {
@@ -121,11 +126,11 @@ exports.getTourStats = async (req, res) => {
           avgRating: { $avg: '$ratingsAverage' },
           avgPrice: { $avg: '$price' },
           minPrice: { $min: '$price' },
-          maxPrice: { $max: '$price' }
-        }
+          maxPrice: { $max: '$price' },
+        },
       },
       {
-       $sort: {avgPrice: 1}
+        $sort: { avgPrice: 1 },
       },
       // {
       //   $match: {_id: {$ne: 'EASY'}} //Se pueden anidar muchos Match para filtar
@@ -136,63 +141,61 @@ exports.getTourStats = async (req, res) => {
       status: 'success',
       results: stats.length,
       data: {
-        stats
-      }
+        stats,
+      },
     });
-
-  }catch (e) {
+  } catch (e) {
     res.status(404).json({
       status: 'fail',
-      message: e.message
+      message: e.message,
     });
   }
-}
+};
 
 exports.getMonthlyPlan = async (req, res) => {
-  try{
+  try {
     const year = req.params.year * 1;
     const plan = await Tour.aggregate([
       {
-        $unwind: '$startDates'
+        $unwind: '$startDates',
       },
       {
         $match: {
           startDates: {
             $gte: new Date(`${year}-01-01`),
             $lte: new Date(`${year}-12-01`),
-          }
-        }
+          },
+        },
       },
       {
         $group: {
-          _id: { $month: '$startDates'},
+          _id: { $month: '$startDates' },
           numTourStarts: { $sum: 1 },
-          tours: { $push: '$name' }
-        }
+          tours: { $push: '$name' },
+        },
       },
       {
-        $addFields: {month: '$_id'}
+        $addFields: { month: '$_id' },
       },
       {
-        $project: {_id: 0}
+        $project: { _id: 0 },
       },
       {
-        $sort: {numTourStarts: -1}
-      }
+        $sort: { numTourStarts: -1 },
+      },
     ]);
 
     res.status(200).json({
       status: 'success',
       results: plan.length,
       data: {
-        plan
-      }
+        plan,
+      },
     });
-
-  }catch (e) {
+  } catch (e) {
     res.status(404).json({
       status: 'fail',
-      message: e.message
+      message: e.message,
     });
   }
-}
+};
