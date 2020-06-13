@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
 
 const toursSchema = new mongoose.Schema({
   name: {
@@ -51,7 +52,28 @@ const toursSchema = new mongoose.Schema({
     default: Date.now(),
     select: false
   },
-  startDates: [Date]
+  startDates: [Date],
+  slug: String
+}, {
+  toJSON: {virtuals: true},
+  toObject: {virtuals: true}
+});
+
+toursSchema.virtual('durationWeeks').get(function() {  //Campos virtuales basados en otros campos q no estan realmente en la BD
+  return this.duration/7;
+});
+
+//Document Middleware runs before .save() and .create() doesnt work in insertMany()
+toursSchema.pre('save', function(next) {
+  this.slug = slugify(this.name, {lower: true});
+  next();
+});
+
+toursSchema.post('save', function(doc, next) {
+  if(doc.slug){
+    console.log('Slug is working!!!');
+  }
+  next();
 });
 
 const Tour = mongoose.model('Tour', toursSchema);

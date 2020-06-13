@@ -44,6 +44,8 @@ class APIFeatures {
     (async () => {
       numTours = await this.query.countDocuments() ;
     })();
+
+    console.log('NumTours: ')
     if (skip >= numTours) throw new Error('This page doesnt exist');*/ //TODO Ajustar
     this.query = this.query.skip(skip).limit(limit);
     return this;
