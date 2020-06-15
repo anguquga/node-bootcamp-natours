@@ -18,6 +18,26 @@ mongoose
 
 //1- Start Server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`App running on port ${port}`);
+});
+
+//Maneja el Rejection de todas las Promise que tienen Rejection
+process.on('unhandledRejection', (err) => {
+  console.error('!!!UNHANDLED REJETION!!! - - - - - - Shutting Down....');
+  console.error(err.name, err.message);
+  //Espera que el server termine todos sus procesos y luego si termina el proceso
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+//Maneja las Excepciones no capturadas
+process.on('uncaughtException', (err) => {
+  console.error('!!!UNHANDLED EXCEPTION!!! - - - - - - Shutting Down....');
+  console.error(err);
+  //Espera que el server termine todos sus procesos y luego si termina el proceso
+  server.close(() => {
+    process.exit(1);
+  });
 });
