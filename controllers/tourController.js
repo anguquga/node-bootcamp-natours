@@ -40,7 +40,7 @@ exports.createTour = catchAsync(async (req, res, next) => {
   const data = Object.assign(req.body);
   const newTour = await Tour.create({ ...data });
   if (!newTour) {
-    return next(new AppError(`Error while creatinr New Tour`, 404));
+    return next(new AppError(`Error while creating New Tour`, 404));
   }
   res.status(201).json({
     status: 'success',
