@@ -1,7 +1,23 @@
 const express = require('express');
 const userController = require('../controllers/userController');
+const authController = require('../controllers/authController');
+const AppError = require('../utils/appError');
 
 const userRouter = express.Router();
+
+userRouter
+  .route('/signup')
+  .post(authController.signup)
+  .all((req, res) => {
+    throw new AppError(`Only POST method allowed for ${req.originalUrl}`, 404);
+  });
+
+userRouter
+  .route('/login/')
+  .post(authController.login)
+  .all((req, res) => {
+    throw new AppError(`Only POST method allowed for ${req.originalUrl}`, 404);
+  });
 
 userRouter
   .route('/')
