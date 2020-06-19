@@ -41,25 +41,30 @@ usersSchema.pre('validate', function (next) {
       this.passwordConfirm
     );
   }
+  this.passwordConfirm = this.password;
   next();
 });
 
 usersSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
-  this.passwordConfirm = this.password;
+  this.passwordConfirm = undefined;
   next();
 });
 
 usersSchema.pre('findOneAndUpdate', async function (next) {
   if (this._update.password) {
     this._update.password = await bcrypt.hash(this._update.password, 12);
-    this._update.passwordConfirm = this._update.password;
+    this._update.passwordConfirm = undefined;
     next();
   } else {
     next(new AppError('Please provide a Password', 404));
   }
 });
+
+usersSchema.methods.validatePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 const User = mongoose.model('User', usersSchema);
 
