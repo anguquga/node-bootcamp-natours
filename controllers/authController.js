@@ -9,8 +9,8 @@ const generateToken = (id) => {
   });
 };
 
-const validateToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
+const validateToken = async (token) => {
+  return await jwt.verify(token, process.env.JWT_SECRET);
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
@@ -56,4 +56,33 @@ exports.login = catchAsync(async (req, res, next) => {
       token: token
     }
   });
+});
+
+exports.authorize = catchAsync(async (req, res, next) => {
+  //1- Getting token from request
+  let { authorization } = req.headers;
+  if (!authorization || !authorization.startsWith('Bearer'))
+    return next(new AppError(`Please login to get access`, 401));
+  //Token format Bearer [Token]
+  authorization = authorization.split(' ')[1];
+
+  //2- Validate Token
+  const decoded = await validateToken(authorization);
+
+  //3- Check if user still exists
+  const user = await User.findById(decoded.id);
+  if (!user)
+    return next(
+      new AppError(
+        `The user belonging to this token no longer exists. Please login again.`,
+        401
+      )
+    );
+  //4- Check if user changed password after the token was issued
+  if (user.chagedPasswordAfterLogin(decoded.iat))
+    return next(
+      new AppError(`Authentication no longer valid. Please login again!!`, 401)
+    );
+  req.user = user.toObject();
+  next();
 });

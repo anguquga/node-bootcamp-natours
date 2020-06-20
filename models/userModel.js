@@ -28,8 +28,11 @@ const usersSchema = new mongoose.Schema({
     required: [true, 'Please provide a password']
   },
   passwordConfirm: {
-    type: String,
-    required: [true, 'Please confirm your password']
+    type: String
+  },
+  passwordChangedAt: {
+    type: Date,
+    default: new Date()
   }
 });
 
@@ -56,6 +59,7 @@ usersSchema.pre('findOneAndUpdate', async function (next) {
   if (this._update.password) {
     this._update.password = await bcrypt.hash(this._update.password, 12);
     this._update.passwordConfirm = undefined;
+    this._update.passwordChangedAt = new Date();
     next();
   } else {
     next(new AppError('Please provide a Password', 404));
@@ -64,6 +68,14 @@ usersSchema.pre('findOneAndUpdate', async function (next) {
 
 usersSchema.methods.validatePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+usersSchema.methods.chagedPasswordAfterLogin = function (JWTTimestamp) {
+  const changedTimestamp = parseInt(
+    this.passwordChangedAt.getTime() / 1000,
+    10
+  );
+  return changedTimestamp > JWTTimestamp;
 };
 
 const User = mongoose.model('User', usersSchema);
