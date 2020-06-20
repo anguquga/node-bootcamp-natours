@@ -20,6 +20,20 @@ userRouter
   });
 
 userRouter
+  .route('/forgotPassword/')
+  .post(authController.forgotPassword)
+  .all((req, res) => {
+    throw new AppError(`Only POST method allowed for ${req.originalUrl}`, 404);
+  });
+
+userRouter
+  .route('/resetPassword/:token')
+  .patch(authController.resetPassword)
+  .all((req, res) => {
+    throw new AppError(`Only PATHC method allowed for ${req.originalUrl}`, 404);
+  });
+
+userRouter
   .route('/')
   .get(userController.getAllUsers)
   .post(userController.createUser);

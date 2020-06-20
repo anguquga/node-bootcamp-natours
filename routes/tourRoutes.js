@@ -13,12 +13,15 @@ tourRouter.route('/monthly-plan/:year').get(tourController.getMonthlyPlan);
 
 tourRouter
   .route('/')
-  .get(authController.authorize, tourController.getAllTours)
+  .get(authController.authorize(), tourController.getAllTours)
   .post(tourController.createTour);
 tourRouter
   .route(`/:id`)
   .get(tourController.getTourById)
   .patch(tourController.updateTour)
-  .delete(tourController.deleteTour);
+  .delete(
+    authController.authorize('admin', 'lead-guide'),
+    tourController.deleteTour
+  );
 
 module.exports = tourRouter;

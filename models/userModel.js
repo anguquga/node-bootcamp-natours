@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
-const bcrypt = require('bcryptjs');
 
 const AppError = require('../utils/appError');
+const hashUtils = require('../utils/hashUtils');
 
 const usersSchema = new mongoose.Schema({
   name: {
@@ -32,16 +32,25 @@ const usersSchema = new mongoose.Schema({
   },
   passwordChangedAt: {
     type: Date,
-    default: new Date()
+    select: false
+  },
+  passwordResetToken: String,
+  passwordResetExpires: Date,
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'admin'],
+    default: 'user'
   }
 });
 
 usersSchema.pre('validate', function (next) {
   if (this.password !== this.passwordConfirm) {
-    this.invalidate(
-      'passwordConfirm',
-      'Password Confirm must be identical to password',
-      this.passwordConfirm
+    return next(
+      this.invalidate(
+        'passwordConfirm',
+        'Password Confirm must be identical to password',
+        this.passwordConfirm
+      )
     );
   }
   this.passwordConfirm = this.password;
@@ -50,14 +59,15 @@ usersSchema.pre('validate', function (next) {
 
 usersSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  this.password = await hashUtils.bcryptoHash(this.password);
   this.passwordConfirm = undefined;
+  if (!this.isNew) this.passwordChangedAt = new Date() - 1000; //En caso de q haya delay en otro proceso ejemplo el JWT se cree antes por el async
   next();
 });
 
 usersSchema.pre('findOneAndUpdate', async function (next) {
   if (this._update.password) {
-    this._update.password = await bcrypt.hash(this._update.password, 12);
+    this._update.password = await hashUtils.bcryptoHash(this._update.password);
     this._update.passwordConfirm = undefined;
     this._update.passwordChangedAt = new Date();
     next();
@@ -67,7 +77,7 @@ usersSchema.pre('findOneAndUpdate', async function (next) {
 });
 
 usersSchema.methods.validatePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  return await hashUtils.bcryptoHash(candidatePassword, this.password);
 };
 
 usersSchema.methods.chagedPasswordAfterLogin = function (JWTTimestamp) {
@@ -76,6 +86,13 @@ usersSchema.methods.chagedPasswordAfterLogin = function (JWTTimestamp) {
     10
   );
   return changedTimestamp > JWTTimestamp;
+};
+
+usersSchema.methods.createPasswordResetToken = function () {
+  const hashCrypto = hashUtils.createCryptoTokens();
+  this.passwordResetToken = hashCrypto.hashToken;
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  return hashCrypto.resetToken;
 };
 
 const User = mongoose.model('User', usersSchema);
