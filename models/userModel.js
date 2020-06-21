@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 
-const AppError = require('../utils/appError');
 const hashUtils = require('../utils/hashUtils');
 
 const usersSchema = new mongoose.Schema({
@@ -40,6 +39,11 @@ const usersSchema = new mongoose.Schema({
     type: String,
     enum: ['user', 'guide', 'lead-guide', 'admin'],
     default: 'user'
+  },
+  active: {
+    type: Boolean,
+    default: true,
+    select: false
   }
 });
 
@@ -71,6 +75,11 @@ usersSchema.pre('findOneAndUpdate', async function (next) {
     this._update.passwordConfirm = undefined;
     this._update.passwordChangedAt = new Date();
   }
+  next();
+});
+
+usersSchema.pre(/^find/, function (next) {
+  this.find({ active: { $ne: false } });
   next();
 });
 

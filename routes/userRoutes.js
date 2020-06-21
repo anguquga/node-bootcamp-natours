@@ -35,6 +35,11 @@ userRouter
   .all(authController.unauthorizedRoute);
 
 userRouter
+  .route('/deleteMe/')
+  .delete(authController.authorize(), userController.deleteMe)
+  .all(authController.unauthorizedRoute);
+
+userRouter
   .route('/')
   .get(userController.getAllUsers)
   .post(userController.createUser);

@@ -12,16 +12,7 @@ const filterObj = (tmpObj, allowedFields) => {
   return newObj;
 };
 
-exports.getAllUsers = catchAsync(async (req, res, next) => {
-  console.log('Get ALl users');
-});
-
-exports.createUser = (req, res) => {};
-
-exports.getUserById = (req, res) => {
-  console.log('Get user by id');
-};
-
+//---------------------BEGIN Current User Methods -----------------
 exports.updateMe = catchAsync(async (req, res, next) => {
   if (req.body.password || req.body.passwordConfirm)
     return next(
@@ -51,6 +42,24 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.deleteMe = catchAsync(async (req, res, next) => {
+  await User.findByIdAndUpdate({ _id: req.user._id }, { active: false });
+  res.status(204).json({
+    status: 'success'
+  });
+});
+//---------------------END Current User Methods -----------------
+
 exports.updateUser = catchAsync(async (req, res, next) => {});
 
 exports.deleteUser = (req, res) => {};
+
+exports.getAllUsers = catchAsync(async (req, res, next) => {
+  console.log('Get ALl users');
+});
+
+exports.createUser = (req, res) => {};
+
+exports.getUserById = (req, res) => {
+  console.log('Get user by id');
+};
