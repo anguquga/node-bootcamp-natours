@@ -1,37 +1,38 @@
 const express = require('express');
 const userController = require('../controllers/userController');
 const authController = require('../controllers/authController');
-const AppError = require('../utils/appError');
 
 const userRouter = express.Router();
 
 userRouter
   .route('/signup')
   .post(authController.signup)
-  .all((req, res) => {
-    throw new AppError(`Only POST method allowed for ${req.originalUrl}`, 404);
-  });
+  .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/login/')
   .post(authController.login)
-  .all((req, res) => {
-    throw new AppError(`Only POST method allowed for ${req.originalUrl}`, 404);
-  });
+  .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/forgotPassword/')
   .post(authController.forgotPassword)
-  .all((req, res) => {
-    throw new AppError(`Only POST method allowed for ${req.originalUrl}`, 404);
-  });
+  .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/resetPassword/:token')
   .patch(authController.resetPassword)
-  .all((req, res) => {
-    throw new AppError(`Only PATHC method allowed for ${req.originalUrl}`, 404);
-  });
+  .all(authController.unauthorizedRoute);
+
+userRouter
+  .route('/updatePassword/')
+  .patch(authController.authorize(), authController.updatePassword)
+  .all(authController.unauthorizedRoute);
+
+userRouter
+  .route('/updateMe/')
+  .patch(authController.authorize(), userController.updateMe)
+  .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/')

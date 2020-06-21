@@ -70,21 +70,18 @@ usersSchema.pre('findOneAndUpdate', async function (next) {
     this._update.password = await hashUtils.bcryptoHash(this._update.password);
     this._update.passwordConfirm = undefined;
     this._update.passwordChangedAt = new Date();
-    next();
-  } else {
-    next(new AppError('Please provide a Password', 404));
   }
+  next();
 });
 
 usersSchema.methods.validatePassword = async function (candidatePassword) {
-  return await hashUtils.bcryptoHash(candidatePassword, this.password);
+  return await hashUtils.bcryptoCompare(candidatePassword, this.password);
 };
 
 usersSchema.methods.chagedPasswordAfterLogin = function (JWTTimestamp) {
-  const changedTimestamp = parseInt(
-    this.passwordChangedAt.getTime() / 1000,
-    10
-  );
+  const changedTimestamp = this.passwordChangedAt
+    ? parseInt(this.passwordChangedAt.getTime() / 1000, 10)
+    : JWTTimestamp - 1000;
   return changedTimestamp > JWTTimestamp;
 };
 
@@ -93,6 +90,14 @@ usersSchema.methods.createPasswordResetToken = function () {
   this.passwordResetToken = hashCrypto.hashToken;
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return hashCrypto.resetToken;
+};
+
+usersSchema.methods.createObject = function () {
+  const usrObj = this.toObject();
+  delete usrObj.password;
+  delete usrObj.passwordConfirmed;
+  delete usrObj.passwordChangedAt;
+  return usrObj;
 };
 
 const User = mongoose.model('User', usersSchema);

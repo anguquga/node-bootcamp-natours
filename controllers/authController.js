@@ -4,6 +4,25 @@ const AppError = require('../utils/appError');
 const sendEmail = require('../utils/email');
 const hashUtils = require('../utils/hashUtils');
 
+const createSendToken = (user, statusCode, onlyToken, res) => {
+  const token = hashUtils.generateJWTToken(user._id);
+  let resJson = {
+    status: 'success',
+    token: token
+  };
+  if (!onlyToken) {
+    resJson = { ...resJson, data: { user: user } };
+  }
+  res.status(statusCode).json(resJson);
+};
+
+const getJWTToken = (authHeader) => {
+  if (!authHeader || !authHeader.startsWith('Bearer')) return undefined;
+  //Token format Bearer [Token]
+  const authorization = authHeader.split(' ')[1];
+  return authorization;
+};
+
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -14,17 +33,9 @@ exports.signup = catchAsync(async (req, res, next) => {
   if (!newUser) {
     return next(new AppError(`Error while signinup the user`, 404));
   }
-  const token = hashUtils.generateJWTToken(newUser._id);
-  const usrObj = newUser.toObject();
-  delete usrObj.password;
-  delete usrObj.passwordChangedAt;
-  res.status(201).json({
-    status: 'success',
-    token: token,
-    data: {
-      user: usrObj
-    }
-  });
+
+  const usrObj = newUser.createObject();
+  createSendToken(usrObj, 201, false, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -38,24 +49,18 @@ exports.login = catchAsync(async (req, res, next) => {
   //2- Find user by email and check password
   const user = await User.findOne({ email: email });
 
-  if (!user || !(await user.validatePassword(password, user.password))) {
+  if (!user || !(await user.validatePassword(password))) {
     return next(new AppError(`Incorrect email or password`, 401));
   }
-  const token = hashUtils.generateJWTToken(user._id);
-  res.status(201).json({
-    status: 'success',
-    token: token
-  });
+  createSendToken(user, 201, true, res);
 });
 
 exports.authorize = (...roles) => {
   return catchAsync(async (req, res, next) => {
     //1- Getting token from request
-    let { authorization } = req.headers;
-    if (!authorization || !authorization.startsWith('Bearer'))
+    const authorization = getJWTToken(req.headers.authorization);
+    if (!authorization)
       return next(new AppError(`Please login to get access`, 401));
-    //Token format Bearer [Token]
-    authorization = authorization.split(' ')[1];
 
     //2- Validate Token
     const decoded = await hashUtils.validateJWTToken(authorization);
@@ -112,7 +117,6 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       message: message
     });
   } catch (err) {
-    console.log(err);
     userTmp.passwordResetToken = undefined;
     userTmp.passwordResetExpires = undefined;
     userTmp.save({ validateBeforeSave: false });
@@ -150,10 +154,34 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   await userTmp.save();
 
   //3- Login user
-  const token = hashUtils.generateJWTToken(userTmp._id);
-
-  res.status(200).json({
-    status: 'sucess',
-    token: token
-  });
+  createSendToken(userTmp, 200, true, res);
 });
+
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  //1- Get user from the collection
+  const userTmp = await User.findById(req.user._id);
+  if (!userTmp)
+    return next(
+      new AppError(`Invalid Token information. Please Log In again!!`, 400)
+    );
+
+  //2- Check if posted password is correct
+  if (
+    !req.body.password ||
+    !(await userTmp.validatePassword(req.body.oldPassword))
+  )
+    return next(new AppError(`Invalid Password. Please try again!!`, 400));
+
+  //3- Update Password
+  userTmp.password = req.body.password;
+  userTmp.passwordConfirm = req.body.passwordConfirm;
+  await userTmp.save();
+
+  //4- Login again
+  const usrObj = userTmp.createObject();
+  createSendToken(usrObj, 200, true, res);
+});
+
+exports.unauthorizedRoute = (req, res, next) => {
+  next(new AppError(`Only PATCH method allowed for ${req.originalUrl}`, 404));
+};
