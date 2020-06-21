@@ -57,12 +57,45 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   //2- Find user by email and check password
-  const user = await User.findOne({ email: email });
+  const user = await User.findOne({ email: email }).select(
+    '+loginAttempts +lastLoginAttempt'
+  );
 
-  if (!user || !(await user.validatePassword(password))) {
-    return next(new AppError(`Incorrect email or password`, 401));
+  if (!user) return next(new AppError(`Incorrect email or password`, 401));
+
+  const loginAttempts = user.loginAttempts * 1 || 0;
+  if (loginAttempts >= process.env.MAX_LOGIN_ATTEMPTS) {
+    const remainingMins = new Date(
+      new Date(
+        user.lastLoginAttempt.getTime() +
+          process.env.LOGIN_RETRY_TIMEOUT * 60 * 1000
+      ) - Date.now()
+    ).getMinutes();
+    if (remainingMins < process.env.LOGIN_RETRY_TIMEOUT)
+      return next(
+        new AppError(
+          `Account is locked please wait ${remainingMins} minutes and try again!!`,
+          401
+        )
+      );
+    user.loginAttempts = 0;
   }
-  createSendToken(user, 201, true, res);
+
+  let validatePasswrd = true;
+  if (!(await user.validatePassword(password))) {
+    user.loginAttempts = user.loginAttempts + 1 || 1;
+    user.lastLoginAttempt = Date.now();
+    validatePasswrd = false;
+  } else {
+    user.loginAttempts = 0;
+    user.lastLoginAttempt = undefined;
+  }
+  await user.save({
+    new: true,
+    runValidators: true
+  });
+  if (validatePasswrd) createSendToken(user, 201, true, res);
+  else return next(new AppError(`Incorrect email or password`, 401));
 });
 
 exports.authorize = (...roles) => {
@@ -195,5 +228,3 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 exports.unauthorizedRoute = (req, res, next) => {
   next(new AppError(`Only PATCH method allowed for ${req.originalUrl}`, 404));
 };
-
-//TODO Implement Max Number of Login Attemps ex: 10 intentos seguidos sino esperar 1 hr para reintentar

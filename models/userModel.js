@@ -44,10 +44,19 @@ const usersSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
     select: false
+  },
+  loginAttempts: {
+    type: Number,
+    select: false
+  },
+  lastLoginAttempt: {
+    type: Date,
+    select: false
   }
 });
 
 usersSchema.pre('validate', function (next) {
+  if (!this.isModified('password')) return next();
   if (this.password !== this.passwordConfirm) {
     return next(
       this.invalidate(
@@ -106,6 +115,7 @@ usersSchema.methods.createObject = function () {
   delete usrObj.password;
   delete usrObj.passwordConfirmed;
   delete usrObj.passwordChangedAt;
+  delete usrObj.__v;
   return usrObj;
 };
 
