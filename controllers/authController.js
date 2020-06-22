@@ -44,8 +44,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     return next(new AppError(`Error while signinup the user`, 404));
   }
 
-  const usrObj = newUser.createObject();
-  createSendToken(usrObj, 201, false, res);
+  createSendToken(newUser, 201, false, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -58,7 +57,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   //2- Find user by email and check password
   const user = await User.findOne({ email: email }).select(
-    '+loginAttempts +lastLoginAttempt'
+    '+loginAttempts +lastLoginAttempt +password'
   );
 
   if (!user) return next(new AppError(`Incorrect email or password`, 401));
@@ -202,7 +201,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
   //1- Get user from the collection
-  const userTmp = await User.findById(req.user._id);
+  const userTmp = await (await User.findById(req.user._id)).select('+password');
   if (!userTmp)
     return next(
       new AppError(`Invalid Token information. Please Log In again!!`, 400)
@@ -221,8 +220,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   await userTmp.save();
 
   //4- Login again
-  const usrObj = userTmp.createObject();
-  createSendToken(usrObj, 200, true, res);
+  createSendToken(userTmp, 200, true, res);
 });
 
 exports.unauthorizedRoute = (req, res, next) => {

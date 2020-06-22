@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 
+const schemaOptions = {
+  virtuals: true,
+  versionKey: false,
+  transform: function (doc, res) {
+    //delete res.__v;
+  }
+};
+
 const toursSchema = new mongoose.Schema(
   {
     name: {
@@ -78,11 +86,35 @@ const toursSchema = new mongoose.Schema(
     secretTour: {
       type: Boolean,
       default: false
-    }
+    },
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point']
+      },
+      coordinates: [Number], //Latitude,Longitude
+      address: String,
+      description: String
+    },
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point']
+        },
+        coordinates: [Number], //Latitude,Longitude
+        address: String,
+        description: String,
+        day: Number
+      }
+    ],
+    guides: [{ type: mongoose.Schema.ObjectId, ref: 'User' }]
   },
   {
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toJSON: { ...schemaOptions },
+    toObject: { ...schemaOptions }
   }
 );
 
@@ -99,7 +131,8 @@ toursSchema.pre('save', function (next) {
 
 //Query Middleware
 toursSchema.pre(/^find/, function (next) {
-  this.find({ secretTour: { $ne: true } }); // No muestra los tours que tengan secretTour en true funciona en todos los metodos find
+  this.find({ secretTour: { $ne: true } }) // No muestra los tours que tengan secretTour en true funciona en todos los metodos find
+    .populate('guides');
   this.start = Date.now(); //Setea una propiedad start en el objeto llamada start
   next();
 });
@@ -121,6 +154,12 @@ toursSchema.pre('aggregate', function (next) {
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } }); //unshift method agrega elemento al comienzo de un array
   next();
 });
+
+toursSchema.methods.createObject = function () {
+  const obj = this.toObject();
+  delete obj.__v;
+  return obj;
+};
 
 const Tour = mongoose.model('Tour', toursSchema);
 

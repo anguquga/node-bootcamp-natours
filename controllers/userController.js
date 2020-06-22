@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const APIFeatures = require('../utils/apiFeatures');
 
 const filterObj = (tmpObj, allowedFields) => {
   const newObj = {};
@@ -33,11 +34,10 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     }
   );
 
-  const usrObj = userTmp.createObject();
   res.status(201).json({
     status: 'success',
     data: {
-      user: usrObj
+      user: userTmp
     }
   });
 });
@@ -55,7 +55,21 @@ exports.updateUser = catchAsync(async (req, res, next) => {});
 exports.deleteUser = (req, res) => {};
 
 exports.getAllUsers = catchAsync(async (req, res, next) => {
-  console.log('Get ALl users');
+  const features = new APIFeatures(User.find(), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const users = await features.query;
+
+  res.status(200).json({
+    status: 'success',
+    results: users.length,
+    data: {
+      users
+    }
+  });
 });
 
 exports.createUser = (req, res) => {};

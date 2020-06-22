@@ -3,57 +3,82 @@ const validator = require('validator');
 
 const hashUtils = require('../utils/hashUtils');
 
-const usersSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'A user must have a name'],
-    maxlength: [40, 'A name must have max 40 characters'],
-    minlength: [10, 'A name must have at least 10 characters']
-  },
-  email: {
-    type: String,
-    required: [true, 'A user must have an email'],
-    validate: {
-      validator: validator.isEmail,
-      message: 'Please provide a valid Email'
-    },
-    unique: true,
-    lowercase: true
-  },
-  photo: String,
-  password: {
-    type: String,
-    minlength: [8, 'Password must have at least 8 characters'],
-    required: [true, 'Please provide a password']
-  },
-  passwordConfirm: {
-    type: String
-  },
-  passwordChangedAt: {
-    type: Date,
-    select: false
-  },
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-  role: {
-    type: String,
-    enum: ['user', 'guide', 'lead-guide', 'admin'],
-    default: 'user'
-  },
-  active: {
-    type: Boolean,
-    default: true,
-    select: false
-  },
-  loginAttempts: {
-    type: Number,
-    select: false
-  },
-  lastLoginAttempt: {
-    type: Date,
-    select: false
+const schemaOptions = {
+  virtuals: true,
+  versionKey: false,
+  transform: function (doc, res) {
+    delete res.password;
+    delete res.passwordConfirmed;
+    delete res.passwordChangedAt;
+    delete res.active;
   }
-});
+};
+
+const usersSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'A user must have a name'],
+      maxlength: [40, 'A name must have max 40 characters'],
+      minlength: [10, 'A name must have at least 10 characters']
+    },
+    email: {
+      type: String,
+      required: [true, 'A user must have an email'],
+      validate: {
+        validator: validator.isEmail,
+        message: 'Please provide a valid Email'
+      },
+      unique: true,
+      lowercase: true
+    },
+    photo: String,
+    password: {
+      type: String,
+      minlength: [8, 'Password must have at least 8 characters'],
+      required: [true, 'Please provide a password'],
+      select: false
+    },
+    passwordConfirm: {
+      type: String,
+      select: false
+    },
+    passwordChangedAt: {
+      type: Date,
+      select: false
+    },
+    passwordResetToken: {
+      type: String,
+      select: false
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false
+    },
+    role: {
+      type: String,
+      enum: ['user', 'guide', 'lead-guide', 'admin'],
+      default: 'user'
+    },
+    active: {
+      type: Boolean,
+      default: true,
+      select: false
+    },
+    loginAttempts: {
+      type: Number,
+      select: false
+    },
+    lastLoginAttempt: {
+      type: Date,
+      select: false
+    }
+  },
+  {
+    toJSON: { ...schemaOptions },
+    toObject: { ...schemaOptions }
+  }
+);
 
 usersSchema.pre('validate', function (next) {
   if (!this.isModified('password')) return next();
@@ -108,15 +133,6 @@ usersSchema.methods.createPasswordResetToken = function () {
   this.passwordResetToken = hashCrypto.hashToken;
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return hashCrypto.resetToken;
-};
-
-usersSchema.methods.createObject = function () {
-  const usrObj = this.toObject();
-  delete usrObj.password;
-  delete usrObj.passwordConfirmed;
-  delete usrObj.passwordChangedAt;
-  delete usrObj.__v;
-  return usrObj;
 };
 
 const User = mongoose.model('User', usersSchema);
