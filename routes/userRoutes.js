@@ -41,12 +41,12 @@ userRouter
 
 userRouter
   .route('/')
-  .get(userController.getAllUsers)
-  .post(userController.createUser);
+  .get(authController.authorize('admin'), userController.getAllUsers);
+
 userRouter
   .route('/:id')
-  .get(userController.getUserById)
-  .patch(userController.updateUser)
-  .delete(userController.deleteUser);
+  .get(authController.authorize('admin'), userController.getUserById)
+  .patch(authController.authorize('admin'), userController.updateUser)
+  .delete(authController.authorize('admin'), userController.deleteUser);
 
 module.exports = userRouter;

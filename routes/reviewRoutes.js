@@ -8,9 +8,21 @@ const reviewRouter = express.Router({ mergeParams: true });
 //POST /reviews
 reviewRouter
   .route('/')
-  .get(authController.authorize('user'), reviewController.getAllReviews)
-  .post(authController.authorize('user'), reviewController.createReview);
+  .get(
+    authController.authorize(),
+    reviewController.setTourUserIds,
+    reviewController.getAllReviews
+  )
+  .post(
+    authController.authorize(),
+    reviewController.setTourUserIds,
+    reviewController.createReview
+  );
 
-reviewRouter.route(`/:id`).get(reviewController.getReviewById);
+reviewRouter
+  .route(`/:id`)
+  .get(authController.authorize(), reviewController.getReviewById)
+  .delete(authController.authorize(), reviewController.deleteReview)
+  .patch(authController.authorize(), reviewController.updateReview);
 
 module.exports = reviewRouter;

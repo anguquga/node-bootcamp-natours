@@ -1,7 +1,7 @@
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const APIFeatures = require('../utils/apiFeatures');
+const factory = require('./handlerFactory');
 
 const filterObj = (tmpObj, allowedFields) => {
   const newObj = {};
@@ -50,30 +50,7 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
 });
 //---------------------END Current User Methods -----------------
 
-exports.updateUser = catchAsync(async (req, res, next) => {});
-
-exports.deleteUser = (req, res) => {};
-
-exports.getAllUsers = catchAsync(async (req, res, next) => {
-  const features = new APIFeatures(User.find(), req.query)
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
-
-  const users = await features.query;
-
-  res.status(200).json({
-    status: 'success',
-    results: users.length,
-    data: {
-      users
-    }
-  });
-});
-
-exports.createUser = (req, res) => {};
-
-exports.getUserById = (req, res) => {
-  console.log('Get user by id');
-};
+exports.updateUser = factory.updateOne(User);
+exports.deleteUser = factory.deleteOne(User);
+exports.getAllUsers = factory.getAllDocs(User);
+exports.getUserById = factory.getOneById(User);
