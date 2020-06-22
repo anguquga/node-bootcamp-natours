@@ -3,10 +3,7 @@ const slugify = require('slugify');
 
 const schemaOptions = {
   virtuals: true,
-  versionKey: false,
-  transform: function (doc, res) {
-    //delete res.__v;
-  }
+  versionKey: false
 };
 
 const toursSchema = new mongoose.Schema(
@@ -54,9 +51,6 @@ const toursSchema = new mongoose.Schema(
       type: Number,
       validate: {
         validator: function (val) {
-          //this. solo funciona en new documents no en updates
-          //TODO revisar el Update
-          console.log('Price: ', this.price, 'Discount: ', val);
           return val < this.price; //pricediscount debe ser menos a price siempre
         },
         message: 'Discount price ({VALUE}) should be below regular price'
@@ -113,27 +107,63 @@ const toursSchema = new mongoose.Schema(
     guides: [{ type: mongoose.Schema.ObjectId, ref: 'User' }]
   },
   {
-    toJSON: { ...schemaOptions },
-    toObject: { ...schemaOptions }
+    toJSON: {
+      ...schemaOptions,
+      transform: function (doc, res) {
+        delete res.secretTour;
+      }
+    },
+    toObject: {
+      ...schemaOptions,
+      transform: function (doc, res) {
+        //Definir que quitar
+      }
+    }
   }
 );
 
 toursSchema.virtual('durationWeeks').get(function () {
   //Campos virtuales basados en otros campos q no estan realmente en la BD
-  return this.duration / 7;
+  return this.isSelected('durationWeeks') ? this.duration / 7 : undefined;
+});
+
+toursSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour', //Campo en el modelo a unir
+  localField: '_id' //Campo que identifica mi modelo para relacionarlo a la otra entidad
+});
+
+toursSchema.virtual('bookings', {
+  ref: 'Booking',
+  foreignField: 'tour', //Campo en el modelo a unir
+  localField: '_id' //Campo que identifica mi modelo para relacionarlo a la otra entidad
 });
 
 //Document Middleware runs before .save() and .create() doesnt work in insertMany()
 toursSchema.pre('save', function (next) {
-  this.slug = slugify(this.name, { lower: true });
+  if (this.isNew || this.isModified('name'))
+    this.slug = slugify(this.name, { lower: true });
   next();
 });
 
 //Query Middleware
 toursSchema.pre(/^find/, function (next) {
   this.find({ secretTour: { $ne: true } }) // No muestra los tours que tengan secretTour en true funciona en todos los metodos find
-    .populate('guides');
+    .populate({ path: 'guides', select: 'name photo' });
   this.start = Date.now(); //Setea una propiedad start en el objeto llamada start
+  next();
+});
+
+toursSchema.pre('findOneAndUpdate', async function (next) {
+  if (this._update.priceDiscount && this._update.priceDiscount < this.price) {
+    return next(
+      this.invalidate(
+        'priceDiscount',
+        'Discount price ({VALUE}) should be below regular price',
+        this._update.priceDiscount
+      )
+    );
+  }
   next();
 });
 
@@ -142,24 +172,11 @@ toursSchema.post(/^find/, function (docs, next) {
   next();
 });
 
-toursSchema.post('save', function (doc, next) {
-  if (doc.slug) {
-    console.log('Slug is working!!!');
-  }
-  next();
-});
-
 //Aggregation Middleware
 toursSchema.pre('aggregate', function (next) {
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } }); //unshift method agrega elemento al comienzo de un array
   next();
 });
-
-toursSchema.methods.createObject = function () {
-  const obj = this.toObject();
-  delete obj.__v;
-  return obj;
-};
 
 const Tour = mongoose.model('Tour', toursSchema);
 

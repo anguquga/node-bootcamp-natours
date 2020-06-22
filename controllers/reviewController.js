@@ -5,6 +5,8 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 
 exports.getAllReviews = catchAsync(async (req, res, next) => {
+  req.query.tour = req.params.tourId || undefined;
+
   const features = new APIFeatures(Review.find(), req.query)
     .filter()
     .sort()
@@ -38,6 +40,10 @@ exports.getReviewById = catchAsync(async (req, res, next) => {
 });
 
 exports.createReview = catchAsync(async (req, res, next) => {
+  //Permite crear un Review en la ruta /tours/[tourId]/reviews
+  if (!req.body.tour) req.body.tour = req.params.tourId;
+  if (!req.body.user) req.body.user = req.user._id;
+
   const data = Object.assign(req.body);
   const newReview = await Review.create({ ...data });
   if (!newReview) {

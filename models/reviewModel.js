@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const schemaOptions = {
   virtuals: true,
-  versionKey: true,
+  versionKey: false,
   transform: function (doc, res) {}
 };
 
@@ -31,7 +31,14 @@ const reviewSchema = new mongoose.Schema(
 );
 
 reviewSchema.pre(/^find/, function (next) {
-  this.find().populate({ path: 'tour' }).populate({ path: 'user' });
+  this.populate({
+    path: 'tour',
+    select: 'name',
+    virtuals: false
+  }).populate({
+    path: 'user',
+    select: 'name photo'
+  });
   next();
 });
 
