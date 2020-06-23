@@ -122,6 +122,9 @@ const toursSchema = new mongoose.Schema(
   }
 );
 
+toursSchema.index({ price: 1, ratingsAverage: -1 });
+toursSchema.index({ slug: 1 });
+
 toursSchema.virtual('durationWeeks').get(function () {
   //Campos virtuales basados en otros campos q no estan realmente en la BD
   return this.isSelected('durationWeeks') ? this.duration / 7 : undefined;
