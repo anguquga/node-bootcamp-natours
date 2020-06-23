@@ -12,16 +12,27 @@ tourRouter
   .route('/top-5-cheap')
   .get(tourController.top5Cheap, tourController.getAllTours);
 tourRouter.route('/tourStats').get(tourController.getTourStats);
-tourRouter.route('/monthly-plan/:year').get(tourController.getMonthlyPlan);
+tourRouter
+  .route('/monthly-plan/:year')
+  .get(
+    authController.authorize('admin', 'lead-guide', 'guide'),
+    tourController.getMonthlyPlan
+  );
 
 tourRouter
   .route('/')
-  .get(authController.authorize(), tourController.getAllTours)
-  .post(tourController.createTour);
+  .get(tourController.getAllTours)
+  .post(
+    authController.authorize('admin', 'lead-guide'),
+    tourController.createTour
+  );
 tourRouter
   .route('/:id')
   .get(tourController.getTourById)
-  .patch(tourController.updateTour)
+  .patch(
+    authController.authorize('admin', 'lead-guide'),
+    tourController.updateTour
+  )
   .delete(
     authController.authorize('admin', 'lead-guide'),
     tourController.deleteTour

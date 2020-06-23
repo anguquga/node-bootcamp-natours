@@ -24,29 +24,36 @@ userRouter
   .patch(authController.resetPassword)
   .all(authController.unauthorizedRoute);
 
+userRouter.use(authController.authorize());
+
 userRouter
   .route('/updatePassword/')
-  .patch(authController.authorize(), authController.updatePassword)
+  .patch(authController.updatePassword)
   .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/updateMe/')
-  .patch(authController.authorize(), userController.updateMe)
+  .patch(userController.updateMe)
   .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/deleteMe/')
-  .delete(authController.authorize(), userController.deleteMe)
+  .delete(userController.deleteMe)
   .all(authController.unauthorizedRoute);
 
 userRouter
-  .route('/')
-  .get(authController.authorize('admin'), userController.getAllUsers);
+  .route('/me/')
+  .get(userController.getMe, userController.getUserById)
+  .all(authController.unauthorizedRoute);
+
+userRouter.use(authController.authorize('admin'));
+
+userRouter.route('/').get(userController.getAllUsers);
 
 userRouter
   .route('/:id')
-  .get(authController.authorize('admin'), userController.getUserById)
-  .patch(authController.authorize('admin'), userController.updateUser)
-  .delete(authController.authorize('admin'), userController.deleteUser);
+  .get(userController.getUserById)
+  .patch(userController.updateUser)
+  .delete(userController.deleteUser);
 
 module.exports = userRouter;

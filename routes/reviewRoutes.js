@@ -4,25 +4,29 @@ const authController = require('../controllers/authController');
 
 const reviewRouter = express.Router({ mergeParams: true });
 
+reviewRouter.use(authController.authorize);
+
 //POST /tours/2452/reviews  por el mergeParams lo permite
 //POST /reviews
 reviewRouter
   .route('/')
-  .get(
-    authController.authorize(),
-    reviewController.setTourUserIds,
-    reviewController.getAllReviews
-  )
+  .get(reviewController.setTourUserIds, reviewController.getAllReviews)
   .post(
-    authController.authorize(),
+    authController.authorize('user'),
     reviewController.setTourUserIds,
     reviewController.createReview
   );
 
 reviewRouter
   .route(`/:id`)
-  .get(authController.authorize(), reviewController.getReviewById)
-  .delete(authController.authorize(), reviewController.deleteReview)
-  .patch(authController.authorize(), reviewController.updateReview);
+  .get(reviewController.getReviewById)
+  .delete(
+    authController.authorize('user', 'admin'),
+    reviewController.deleteReview
+  )
+  .patch(
+    authController.authorize('user', 'admin'),
+    reviewController.updateReview
+  );
 
 module.exports = reviewRouter;

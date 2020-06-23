@@ -30,14 +30,16 @@ exports.getAllReviews = factory.getAllDocs(Review, {
 });
 
 exports.setTourUserIds = (req, res, next) => {
-  //Para get All Reviews /tours/[tourId]/reviews o /reviews
-  req.query.tour = req.query.tour || req.params.tourId;
-  if (req.user.role !== 'admin') {
+  //Para AllReviews y CreateReview
+  if (req.user.role === 'user') {
     req.query.user = req.user._id;
     req.body.user = req.user._id;
   }
 
-  //Para CreateReview por la ruta /tours/[tourId]/reviews o /reviews
-  if (req.params.tourId) req.body.tour = req.params.tourId;
+  //Para CreateReview y AllReviews por la ruta /tours/[tourId]/reviews
+  if (req.params.tourId) {
+    req.body.tour = req.params.tourId;
+    req.query.tour = req.params.tourId;
+  }
   next();
 };

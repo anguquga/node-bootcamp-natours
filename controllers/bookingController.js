@@ -26,14 +26,16 @@ exports.getAllBookings = factory.getAllDocs(Booking, {
 });
 
 exports.setTourUserIds = (req, res, next) => {
-  //Para get All Bookings /tours/[tourId]/bookings o /bookings
-  req.query.tour = req.params.tourId || undefined;
-  if (req.user.role !== 'admin') {
+  //Para AllBookings y CreateBooking
+  if (req.user.role === 'user') {
     req.query.user = req.user._id;
     req.body.user = req.user._id;
   }
 
-  //Para CreateReview por la ruta /tours/[tourId]/reviews o /reviews
-  if (req.params.tourId) req.body.tour = req.params.tourId;
+  //Para AllBookings y CreateBooking por la ruta /tours/[tourId]/bookings
+  if (req.params.tourId) {
+    req.body.tour = req.params.tourId;
+    req.query.tour = req.params.tourId;
+  }
   next();
 };

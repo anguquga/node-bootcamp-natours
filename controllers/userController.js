@@ -48,6 +48,11 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
     status: 'success'
   });
 });
+
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user._id;
+  next();
+};
 //---------------------END Current User Methods -----------------
 
 exports.updateUser = factory.updateOne(User);
