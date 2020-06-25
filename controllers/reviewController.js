@@ -30,14 +30,17 @@ exports.getAllReviews = factory.getAllDocs(Review, {
 });
 
 exports.setTourUserIds = (req, res, next) => {
+  console.log('Tour user ids');
   //Para AllReviews y CreateReview
   if (req.user.role === 'user') {
+    console.log('user');
     req.query.user = req.user._id;
     req.body.user = req.user._id;
   }
 
   //Para CreateReview y AllReviews por la ruta /tours/[tourId]/reviews
   if (req.params.tourId) {
+    console.log('tourId', req.params.tourId);
     req.body.tour = req.params.tourId;
     req.query.tour = req.params.tourId;
   }

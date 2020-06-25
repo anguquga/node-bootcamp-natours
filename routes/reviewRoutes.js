@@ -4,7 +4,7 @@ const authController = require('../controllers/authController');
 
 const reviewRouter = express.Router({ mergeParams: true });
 
-reviewRouter.use(authController.authorize);
+reviewRouter.use(authController.authorize());
 
 //POST /tours/2452/reviews  por el mergeParams lo permite
 //POST /reviews
