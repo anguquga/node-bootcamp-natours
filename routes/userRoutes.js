@@ -24,25 +24,32 @@ userRouter
   .patch(authController.resetPassword)
   .all(authController.unauthorizedRoute);
 
+userRouter.use(authController.authorize());
+
 userRouter
   .route('/updatePassword/')
-  .patch(authController.authorize(), authController.updatePassword)
+  .patch(authController.updatePassword)
   .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/updateMe/')
-  .patch(authController.authorize(), userController.updateMe)
+  .patch(userController.updateMe)
   .all(authController.unauthorizedRoute);
 
 userRouter
   .route('/deleteMe/')
-  .delete(authController.authorize(), userController.deleteMe)
+  .delete(userController.deleteMe)
   .all(authController.unauthorizedRoute);
 
 userRouter
-  .route('/')
-  .get(userController.getAllUsers)
-  .post(userController.createUser);
+  .route('/me/')
+  .get(userController.getMe, userController.getUserById)
+  .all(authController.unauthorizedRoute);
+
+userRouter.use(authController.authorize('admin'));
+
+userRouter.route('/').get(userController.getAllUsers);
+
 userRouter
   .route('/:id')
   .get(userController.getUserById)

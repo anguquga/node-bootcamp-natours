@@ -1,84 +1,22 @@
 const Tour = require('../models/tourModel');
-const APIFeatures = require('../utils/apiFeatures');
 const catchAsync = require('../utils/catchAsync');
+const factory = require('./handlerFactory');
 const AppError = require('../utils/appError');
 
-exports.getAllTours = catchAsync(async (req, res, next) => {
-  const features = new APIFeatures(Tour.find(), req.query)
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
+exports.createTour = factory.createOne(Tour);
 
-  const tours = await features.query;
+exports.updateTour = factory.createOne(Tour);
 
-  res.status(200).json({
-    status: 'success',
-    results: tours.length,
-    data: {
-      tours
-    }
-  });
+exports.deleteTour = factory.deleteOne(Tour);
+
+exports.getAllTours = factory.getAllDocs(Tour, {
+  review: { path: 'reviews', populate: 'user' },
+  booking: { path: 'bookings', populate: 'user' }
 });
 
-exports.getTourById = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findById(req.params.id);
-  if (!tour) {
-    return next(new AppError(`No tour found with ID: ${req.params.id}`, 404));
-  }
-
-  res.status(200).json({
-    status: 'success',
-    results: tour.length,
-    data: {
-      tour
-    }
-  });
-});
-
-exports.createTour = catchAsync(async (req, res, next) => {
-  const data = Object.assign(req.body);
-  const newTour = await Tour.create({ ...data });
-  if (!newTour) {
-    return next(new AppError(`Error while creating New Tour`, 404));
-  }
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour: newTour
-    }
-  });
-});
-
-exports.updateTour = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findByIdAndUpdate(
-    { _id: req.params.id },
-    { ...req.body },
-    {
-      new: true,
-      runValidators: true
-    }
-  );
-  if (!tour) {
-    return next(new AppError(`No tour found with ID: ${req.params.id}`, 404));
-  }
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour: tour
-    }
-  });
-});
-
-exports.deleteTour = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findByIdAndDelete(req.params.id);
-
-  if (!tour) {
-    return next(new AppError(`No tour found with ID: ${req.params.id}`, 404));
-  }
-
-  res.status(204).json();
+exports.getTourById = factory.getOneById(Tour, {
+  review: { path: 'reviews' },
+  booking: { path: 'bookings' }
 });
 
 exports.top5Cheap = (req, res, next) => {
@@ -159,5 +97,73 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
     data: {
       plan
     }
+  });
+});
+
+exports.getToursWithin = catchAsync(async (req, res, next) => {
+  const { distance, coordinates, unit } = req.params;
+  const [latitude, longitude] = coordinates.split(',');
+  //Convert to radiants 3963.2 radius of Earth in radiants
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+
+  if (!latitude || !longitude)
+    return next(
+      new AppError(
+        'Please provide Latitude and Longitude in the format lat,long',
+        400
+      )
+    );
+
+  const tours = await Tour.find({
+    startLocation: {
+      $geoWithin: {
+        $centerSphere: [[longitude, latitude], radius]
+      }
+    }
+  });
+
+  res.status(200).json({
+    status: 'sucess',
+    results: tours.length,
+    data: { tours }
+  });
+});
+
+exports.getDistances = catchAsync(async (req, res, next) => {
+  const { coordinates, unit } = req.params;
+  const [latitude, longitude] = coordinates.split(',');
+  const unitConverter = unit === 'mi' ? 0.000621371 : 0.001;
+
+  if (!latitude || !longitude)
+    return next(
+      new AppError(
+        'Please provide Latitude and Longitude in the format lat,long',
+        400
+      )
+    );
+
+  const distances = await Tour.aggregate([
+    {
+      $geoNear: {
+        near: {
+          type: 'Point',
+          coordinates: [longitude * 1, latitude * 1]
+        },
+        distanceField: 'distance',
+        distanceMultiplier: unitConverter
+      }
+    },
+    {
+      $project: {
+        distance: 1,
+        name: 1
+      }
+    }
+  ]);
+
+  res.status(200).json({
+    status: 'sucess',
+    results: distances.length,
+    data: { distances }
   });
 });

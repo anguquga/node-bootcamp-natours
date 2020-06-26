@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 
+const schemaOptions = {
+  virtuals: true,
+  versionKey: false
+};
+
 const toursSchema = new mongoose.Schema(
   {
     name: {
@@ -32,7 +37,8 @@ const toursSchema = new mongoose.Schema(
       type: Number,
       default: 4.5,
       min: [1, 'Rating must be above 1.0'],
-      max: [5, 'Rating must be below 5.0']
+      max: [5, 'Rating must be below 5.0'],
+      set: (val) => (val * 1).toFixed(1)
     },
     ratingsQuantity: {
       type: Number,
@@ -46,9 +52,6 @@ const toursSchema = new mongoose.Schema(
       type: Number,
       validate: {
         validator: function (val) {
-          //this. solo funciona en new documents no en updates
-          //TODO revisar el Update
-          console.log('Price: ', this.price, 'Discount: ', val);
           return val < this.price; //pricediscount debe ser menos a price siempre
         },
         message: 'Discount price ({VALUE}) should be below regular price'
@@ -78,29 +81,94 @@ const toursSchema = new mongoose.Schema(
     secretTour: {
       type: Boolean,
       default: false
-    }
+    },
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point']
+      },
+      coordinates: [Number], //Latitude,Longitude
+      address: String,
+      description: String
+    },
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point']
+        },
+        coordinates: [Number], //Latitude,Longitude
+        address: String,
+        description: String,
+        day: Number
+      }
+    ],
+    guides: [{ type: mongoose.Schema.ObjectId, ref: 'User' }]
   },
   {
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toJSON: {
+      ...schemaOptions,
+      transform: function (doc, res) {
+        delete res.secretTour;
+      }
+    },
+    toObject: {
+      ...schemaOptions,
+      transform: function (doc, res) {
+        //Definir que quitar
+      }
+    }
   }
 );
 
+toursSchema.index({ price: 1, ratingsAverage: -1 });
+toursSchema.index({ slug: 1 });
+toursSchema.index({ startLocation: '2dsphere' });
+
 toursSchema.virtual('durationWeeks').get(function () {
   //Campos virtuales basados en otros campos q no estan realmente en la BD
-  return this.duration / 7;
+  return this.isSelected('durationWeeks') ? this.duration / 7 : undefined;
+});
+
+toursSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour', //Campo en el modelo a unir
+  localField: '_id' //Campo que identifica mi modelo para relacionarlo a la otra entidad
+});
+
+toursSchema.virtual('bookings', {
+  ref: 'Booking',
+  foreignField: 'tour', //Campo en el modelo a unir
+  localField: '_id' //Campo que identifica mi modelo para relacionarlo a la otra entidad
 });
 
 //Document Middleware runs before .save() and .create() doesnt work in insertMany()
 toursSchema.pre('save', function (next) {
-  this.slug = slugify(this.name, { lower: true });
+  if (this.isNew || this.isModified('name'))
+    this.slug = slugify(this.name, { lower: true });
   next();
 });
 
 //Query Middleware
 toursSchema.pre(/^find/, function (next) {
-  this.find({ secretTour: { $ne: true } }); // No muestra los tours que tengan secretTour en true funciona en todos los metodos find
+  this.find({ secretTour: { $ne: true } }) // No muestra los tours que tengan secretTour en true funciona en todos los metodos find
+    .populate({ path: 'guides', select: 'name photo' });
   this.start = Date.now(); //Setea una propiedad start en el objeto llamada start
+  next();
+});
+
+toursSchema.pre('findOneAndUpdate', async function (next) {
+  if (this._update.priceDiscount && this._update.priceDiscount < this.price) {
+    return next(
+      this.invalidate(
+        'priceDiscount',
+        'Discount price ({VALUE}) should be below regular price',
+        this._update.priceDiscount
+      )
+    );
+  }
   next();
 });
 
@@ -109,16 +177,9 @@ toursSchema.post(/^find/, function (docs, next) {
   next();
 });
 
-toursSchema.post('save', function (doc, next) {
-  if (doc.slug) {
-    console.log('Slug is working!!!');
-  }
-  next();
-});
-
 //Aggregation Middleware
 toursSchema.pre('aggregate', function (next) {
-  this.pipeline().unshift({ $match: { secretTour: { $ne: true } } }); //unshift method agrega elemento al comienzo de un array
+  this.pipeline().push({ $match: { secretTour: { $ne: true } } }); //unshift method agrega elemento al comienzo de un array
   next();
 });
 

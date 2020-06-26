@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
+const factory = require('./handlerFactory');
 
 const filterObj = (tmpObj, allowedFields) => {
   const newObj = {};
@@ -33,11 +34,10 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     }
   );
 
-  const usrObj = userTmp.createObject();
   res.status(201).json({
     status: 'success',
     data: {
-      user: usrObj
+      user: userTmp
     }
   });
 });
@@ -48,18 +48,14 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
     status: 'success'
   });
 });
+
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user._id;
+  next();
+};
 //---------------------END Current User Methods -----------------
 
-exports.updateUser = catchAsync(async (req, res, next) => {});
-
-exports.deleteUser = (req, res) => {};
-
-exports.getAllUsers = catchAsync(async (req, res, next) => {
-  console.log('Get ALl users');
-});
-
-exports.createUser = (req, res) => {};
-
-exports.getUserById = (req, res) => {
-  console.log('Get user by id');
-};
+exports.updateUser = factory.updateOne(User);
+exports.deleteUser = factory.deleteOne(User);
+exports.getAllUsers = factory.getAllDocs(User);
+exports.getUserById = factory.getOneById(User);
