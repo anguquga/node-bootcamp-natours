@@ -1,6 +1,7 @@
 const Tour = require('../models/tourModel');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
+const AppError = require('../utils/appError');
 
 exports.createTour = factory.createOne(Tour);
 
@@ -96,5 +97,73 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
     data: {
       plan
     }
+  });
+});
+
+exports.getToursWithin = catchAsync(async (req, res, next) => {
+  const { distance, coordinates, unit } = req.params;
+  const [latitude, longitude] = coordinates.split(',');
+  //Convert to radiants 3963.2 radius of Earth in radiants
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+
+  if (!latitude || !longitude)
+    return next(
+      new AppError(
+        'Please provide Latitude and Longitude in the format lat,long',
+        400
+      )
+    );
+
+  const tours = await Tour.find({
+    startLocation: {
+      $geoWithin: {
+        $centerSphere: [[longitude, latitude], radius]
+      }
+    }
+  });
+
+  res.status(200).json({
+    status: 'sucess',
+    results: tours.length,
+    data: { tours }
+  });
+});
+
+exports.getDistances = catchAsync(async (req, res, next) => {
+  const { coordinates, unit } = req.params;
+  const [latitude, longitude] = coordinates.split(',');
+  const unitConverter = unit === 'mi' ? 0.000621371 : 0.001;
+
+  if (!latitude || !longitude)
+    return next(
+      new AppError(
+        'Please provide Latitude and Longitude in the format lat,long',
+        400
+      )
+    );
+
+  const distances = await Tour.aggregate([
+    {
+      $geoNear: {
+        near: {
+          type: 'Point',
+          coordinates: [longitude * 1, latitude * 1]
+        },
+        distanceField: 'distance',
+        distanceMultiplier: unitConverter
+      }
+    },
+    {
+      $project: {
+        distance: 1,
+        name: 1
+      }
+    }
+  ]);
+
+  res.status(200).json({
+    status: 'sucess',
+    results: distances.length,
+    data: { distances }
   });
 });
