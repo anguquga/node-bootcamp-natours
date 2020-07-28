@@ -39,6 +39,8 @@ tourRouter
   .get(tourController.getTourById)
   .patch(
     authController.authorize('admin', 'lead-guide'),
+    tourController.uploadTourImages,
+    tourController.resizeTourImages,
     tourController.updateTour
   )
   .delete(

@@ -1,11 +1,65 @@
+const multer = require('multer');
+const sharp = require('sharp');
+
 const Tour = require('../models/tourModel');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
 const AppError = require('../utils/appError');
 
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, callback) => {
+  if (file.mimetype.startsWith('image')) {
+    callback(null, true);
+  } else {
+    callback(new AppError('Only Images are allowed', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter
+});
+
+exports.uploadTourImages = upload.fields([
+  { name: 'imageCover', maxCount: 1 },
+  { name: 'images', maxCount: 3 }
+]);
+
+exports.resizeTourImages = catchAsync(async (req, res, next) => {
+  if (!req.files || !req.files.imageCover || !req.files.images) return next();
+  let dir = `${process.env.IMAGES_FOLDER}`;
+  if (process.env.NODE_ENV === 'development') dir = '/home/andres-dev/Pictures';
+
+  //1- COver Image
+  //Se colocan en el body los valorees para que el siguiente route actualice el TOur
+  req.body.imageCover = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
+  await sharp(req.files.imageCover[0].buffer)
+    .resize(2000, 1333)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`${dir}/tours/${req.body.imageCover}`);
+
+  //2- Images
+  req.body.images = [];
+  await Promise.all(
+    req.files.images.map(async (file, index) => {
+      const filename = `tour-${req.params.id}-${Date.now()}-${index + 1}.jpeg`;
+      await sharp(file.buffer)
+        .resize(2000, 1333)
+        .toFormat('jpeg')
+        .jpeg({ quality: 90 })
+        .toFile(`${dir}/tours/${filename}`);
+      req.body.images.push(filename);
+    })
+  );
+
+  next();
+});
+
 exports.createTour = factory.createOne(Tour);
 
-exports.updateTour = factory.createOne(Tour);
+exports.updateTour = factory.updateOne(Tour);
 
 exports.deleteTour = factory.deleteOne(Tour);
 

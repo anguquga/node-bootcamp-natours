@@ -33,7 +33,11 @@ userRouter
 
 userRouter
   .route('/updateMe/')
-  .patch(userController.updateMe)
+  .patch(
+    userController.uploadUserPhoto,
+    userController.resizeUserImage,
+    userController.updateMe
+  )
   .all(authController.unauthorizedRoute);
 
 userRouter
@@ -44,6 +48,11 @@ userRouter
 userRouter
   .route('/me/')
   .get(userController.getMe, userController.getUserById)
+  .all(authController.unauthorizedRoute);
+
+userRouter
+  .route('/imageMe/')
+  .get(userController.getImageMe)
   .all(authController.unauthorizedRoute);
 
 userRouter.use(authController.authorize('admin'));

@@ -1,8 +1,8 @@
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const sendEmail = require('../utils/email');
 const hashUtils = require('../utils/hashUtils');
+const Email = require('../utils/email');
 
 const createSendToken = (user, statusCode, onlyToken, res) => {
   const token = hashUtils.generateJWTToken(user._id);
@@ -150,14 +150,16 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetURL = `${req.protocol}://${req.get(
     'host'
   )}/api/v1/users/resetPassword/${resetToken}`;
-  const message = `Forgot your password? Submit a PATCH request with your new Password and PasswordConfirm to ${resetURL}. If you don't want to reset your password please ignore this.`;
 
   try {
-    await sendEmail({
-      email: userTmp.email,
-      subject: 'Reset Password Requested',
-      message: message
-    });
+    const email = new Email(
+      {
+        email: userTmp.email,
+        name: userTmp.name
+      },
+      resetURL
+    );
+    await email.resetPassword();
   } catch (err) {
     userTmp.passwordResetToken = undefined;
     userTmp.passwordResetExpires = undefined;
@@ -201,7 +203,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
   //1- Get user from the collection
-  const userTmp = await (await User.findById(req.user._id)).select('+password');
+  const userTmp = await User.findById(req.user._id).select('+password');
   if (!userTmp)
     return next(
       new AppError(`Invalid Token information. Please Log In again!!`, 400)
@@ -224,5 +226,5 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 });
 
 exports.unauthorizedRoute = (req, res, next) => {
-  next(new AppError(`Only PATCH method allowed for ${req.originalUrl}`, 404));
+  next(new AppError(`Unauthorized Method for ${req.originalUrl}`, 404));
 };

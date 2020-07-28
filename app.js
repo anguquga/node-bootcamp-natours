@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const cors = require('cors');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
@@ -42,6 +43,8 @@ app.use(mongoSanitize());
 
 //Data Sanitization against XSS
 app.use(xss());
+
+app.use(cors());
 
 //Prevent Parameter Pollution
 app.use(

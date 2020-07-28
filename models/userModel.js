@@ -32,7 +32,10 @@ const usersSchema = new mongoose.Schema(
       unique: true,
       lowercase: true
     },
-    photo: String,
+    photo: {
+      type: String,
+      default: 'default.jpg'
+    },
     password: {
       type: String,
       minlength: [8, 'Password must have at least 8 characters'],
